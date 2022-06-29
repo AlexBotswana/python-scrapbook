@@ -1,5 +1,4 @@
 from re import split
-from jmespath import search
 import requests
 from bs4 import BeautifulSoup
 import csv
@@ -7,20 +6,88 @@ import csv
 
 mapping_number = {"Zero": 0, "One": 1, "Two": 2, "Three": 3, "Four" :4, "Five": 5}
 
+#to register book's datas for csv file
+class Book:
+    """
+    Class of a book.
+    ->  url,
+        upc,
+        title,
+        price_including_tax,
+        price_excluding_tax,
+        stock,
+        product_description,
+        category,
+        review_rating,
+        image_url.
+    """
 
-	
+    def __init__(self):
+        #initialise all book's attributes
+        self.title = ""
+        self.url = ""
+        self.upc = ""
+        self.price_including_tax = ""
+        self.price_excluding_tax = ""
+        self.description = ""
+        self.category = ""
+        self.stock = ""
+        self.rating = ""
+        self.url_img = ""
+
+def get_url_categories(url: str) -> list:
+    """Return a list of the categories's urls."""
+    urls = []
+    request = requests.get(url)
+    html = request.content
+    soup = BeautifulSoup(html, features="html.parser")
+    soup_category = soup.find("ul", "nav nav-list").ul
+    soup_category = soup_category.find_all("li")
+    for i in soup_category:
+        urls.append(i.a["href"])
+    return urls
+
+def get_url_books(url):
+    """Return a list of the books's urls of 1 category."""
+    urls_books = []
+    request = requests.get(url)
+    html = request.content
+    soup = BeautifulSoup(html, features="html.parser")
+    soup_books = soup.find_all("article", "product_pod")
+
+    category = soup.find("h1").get_text()
+
+    for i in soup_books:
+        url_book = i.a["href"].replace("../", "")
+        urls_books.append(url_book)
+
+    next_page = soup.find("li", "next")
+    url = url.replace("index.html", "")
+    while next_page:
+        url_next_page = url + next_page.a["href"]
+        request = requests.get(url_next_page)
+        html = request.content
+        soup = BeautifulSoup(html, features="html.parser")
+        soup_books = soup.find_all("article", "product_pod")
+        for i in soup_books:
+            url_book = i.a["href"].replace("../", "")
+            urls_books.append(url_book)
+        next_page = soup.find("li", "next")
+
+    return urls_books, category	
 
 def extract_book_data(book_url):
 
 	response = requests.get(book_url)
 	html_book_page = response.content
 
+	book = Book()
+
 	# transforme (parse) le HTML en objet BeautifulSoup
 	soup_book_page = BeautifulSoup(html_book_page, "html.parser")
 
-	# récupération des informations suivantes : product_page_url (product_url) ,  , , image_url
 	# title
-	title = soup_book_page.find("h1").get_text()
+	book.title = soup_book_page.find("h1").get_text()
 	
 	# Data in table-striped : universal_ product_code (upc), price_including_tax, price_excluding_tax, number_available, 
 	table = soup_book_page.find("table", {"class": "table table-striped"})
@@ -29,72 +96,63 @@ def extract_book_data(book_url):
 		td = row.find("td").get_text()
         # UPC
 		if "UPC" in th:
-			upc = td
+			book.upc = td
         # price without tax
 		if "Price (excl. tax)" in th:
-			price_excluding_tax = td
+			book.price_excluding_tax = td
         # price with tax
 		if "Price (incl. tax)" in th:
-			price_including_tax = td
+			book.price_including_tax = td
         # stock
 		if "Availability" in th:
-			stock = td
+			book.stock = td
 	
 	# product_description
-	product_descpt_bs = soup_book_page.find_all("p")
-	product_descpt_list = []
-	for product_descpt in product_descpt_bs:
-		product_descpt_list.append(product_descpt.text)
+	descpt_bs = soup_book_page.find_all("p")
+	descpt_list = []
+	for descpt in descpt_bs:
+		descpt_list.append(descpt.text)
+	
+	if descpt_list[3]:
+		book.description = str(descpt_list[3])
+	else:
+		book.description = "Sans description"
 	
 	#review_rating
 	rating_bs = soup_book_page.find("p", {"class": "star-rating"})
 	rating = str(rating_bs).split("\n")[0]
 	rating = rating.replace('<p class="star-rating ', "").replace('">', "")
-	rating = mapping_number[rating]
-	
-	# category
-	product_category_bs = soup_book_page.find_all("a", href="../category/books/poetry_23/index.html")
-	product_category_list = []
-	for product_category in product_category_bs:
-		product_category_list.append(product_category.text)
+	book.rating = mapping_number[rating]
 	
 	# image url
 	url_img_bs = soup_book_page.img["src"]
 	url_site_root = "http://books.toscrap.com/"
 	url_img = url_site_root + url_img_bs.replace("../", "")
+	book.url_img = url_img
 	
-	print(book_url)
-	print(upc)
-	print(price_excluding_tax)
-	print(price_including_tax)
-	print(stock)
-	print(title)
-	print(product_descpt_list[3])
-	print(product_category_list[0])
-	print(rating)
-	print(url_img)
+	return book
 
 
+#write in csv file
+def export_csv(books, category):
+    #Export data in csv file
+	with open(f"../data_scrapbook_{category}.csv", "w", newline="") as csv_file:  
+		writer = csv.DictWriter(csv_file, fieldnames=list(vars(books[0]).keys()))
+		writer.writeheader()
+		for book in books:
+			writer.writerow(vars(book))
 
-	#write in csv file
-	# universal_ product_code (upc) = product_data_td_list[0], 
-	# price_including_tax = product_data_td_list[3], 
-	# price_excluding_tax = product_data_td_list [2], 
-	# number_available = product_data_td_list[5], 
-
-	en_tete = ['product_page_url','universal_ product_code (upc)','title','price_including_tax','price_excluding_tax', 'number_available', 'product description', 'category', 'review_rating', 'image_url']
-	with open('../scrapbook/data.csv', 'w') as csv_file:
-		writer = csv.writer(csv_file, delimiter=',')
-		writer.writerow(en_tete)
-		writer.writerow([book_url, upc, title, price_including_tax, price_excluding_tax, stock, product_descpt_list[3], product_category_list[0], rating, url_img])
-
-
-
-#lien du site à scraper
-responde_category = requests.get("http://books.toscrape.com/catalogue/category/books_1/index.html")
-home_category_page = responde_category.content
-soup_home_category_page = BeautifulSoup(home_category_page, "html.parser")
-
-#product_url = "http://books.toscrape.com/catalogue/the-black-maria_991/index.html"
-book_url = "http://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
-extract_book_data(book_url)
+#Main function
+url = "http://books.toscrape.com"
+urls_category = get_url_categories(url)
+for url_category in urls_category:
+    books = []
+    url = f"http://books.toscrape.com/{url_category}"
+    print(url)
+    urls_book, category = get_url_books(url)
+    for url_book in urls_book:
+        url_book = f"http://books.toscrape.com/catalogue/{url_book}"
+        book = extract_book_data(url_book)
+        book.category = category
+        books.append(book)
+    export_csv(books, category)
