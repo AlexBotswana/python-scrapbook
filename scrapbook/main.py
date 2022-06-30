@@ -10,16 +10,16 @@ mapping_number = {"Zero": 0, "One": 1, "Two": 2, "Three": 3, "Four" :4, "Five": 
 class Book:
     """
     Class of a book.
-    ->  url,
+    ->  title,
+        url,
         upc,
-        title,
         price_including_tax,
         price_excluding_tax,
-        stock,
-        product_description,
+        description,
         category,
+        stock,
         review_rating,
-        image_url.
+        image_url
     """
 
     def __init__(self):
@@ -43,8 +43,8 @@ def get_url_categories(url: str) -> list:
     soup = BeautifulSoup(html, features="html.parser")
     soup_category = soup.find("ul", "nav nav-list").ul
     soup_category = soup_category.find_all("li")
-    for i in soup_category:
-        urls.append(i.a["href"])
+    for url_category in soup_category:
+        urls.append(url_category.a["href"])
     return urls
 
 def get_url_books(url):
@@ -57,8 +57,8 @@ def get_url_books(url):
 
     category = soup.find("h1").get_text()
 
-    for i in soup_books:
-        url_book = i.a["href"].replace("../", "")
+    for book_href in soup_books:
+        url_book = book_href.a["href"].replace("../", "")
         urls_books.append(url_book)
 
     next_page = soup.find("li", "next")
@@ -69,8 +69,8 @@ def get_url_books(url):
         html = request.content
         soup = BeautifulSoup(html, features="html.parser")
         soup_books = soup.find_all("article", "product_pod")
-        for i in soup_books:
-            url_book = i.a["href"].replace("../", "")
+        for book_href in soup_books:
+            url_book = book_href.a["href"].replace("../", "")
             urls_books.append(url_book)
         next_page = soup.find("li", "next")
 
@@ -136,8 +136,8 @@ def extract_book_data(book_url):
 #write in csv file
 def export_csv(books, category):
     #Export data in csv file
-	with open(f"../data_scrapbook_{category}.csv", "w", newline="") as csv_file:  
-		writer = csv.DictWriter(csv_file, fieldnames=list(vars(books[0]).keys()))
+	with open(f"csv/{category}.csv", "w", newline="") as csvfile:  
+		writer = csv.DictWriter(csvfile, fieldnames=list(vars(books[0]).keys()))
 		writer.writeheader()
 		for book in books:
 			writer.writerow(vars(book))
