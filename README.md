@@ -7,12 +7,13 @@ Installation
         py -m venv .venv
         .\scripts\activate
 
-    If you don't have the packages requests,  beautifulsoup, you have to install them:
+    If you don't have the packages requests,  beautifulsoup, cv2 you have to install them:
         pip install requests
         pip install beautifulsoup4
+        pip install opencv-python
 
 Execution
     In the folder where you paste the program main.py:
-        create a folder named: csv
+        create 2 folders named: csv and picture
         execute the program as follow:
             py main.py
