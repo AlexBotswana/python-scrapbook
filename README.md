@@ -7,7 +7,7 @@ Installation
         py -m venv .venv
         .\scripts\activate
 
-    If you don't have the packages requests,  beautifulsoup, cv2 you have to install them:
+    If you don't have the packages requests,  beautifulsoup, urllib.request,  you have to install them:
         pip install requests
         pip install beautifulsoup4
         pip install opencv-python
