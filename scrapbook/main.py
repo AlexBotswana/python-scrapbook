@@ -1,12 +1,12 @@
+from dataclasses import replace
 import requests
 from bs4 import BeautifulSoup
 import csv
 import urllib.request
+import unicodedata
 
 
 mapping_number = {"Zero": 0, "One": 1, "Two": 2, "Three": 3, "Four" :4, "Five": 5}
-
-#to register book's datas for csv file
 
 def get_url_categories(url: str) -> list:
     """Return a list of the categories's urls."""
@@ -46,11 +46,11 @@ def get_url_books(url):
             url_book = book_href.a["href"].replace("../", "")
             urls_books.append(url_book)
         next_page = soup.find("li", "next")
-
     return urls_books, category	
 
 def extract_book_data(book_url):
 
+    # to register book's datas for csv file
     booking = {
     "title": 0,
     "url": 1,
@@ -73,8 +73,9 @@ def extract_book_data(book_url):
 
 	# title
     title_book = soup_book_page.find("h1").get_text()
-    booking["title"] = title_book.replace("\u203D", "").replace("\u2028", "").replace("\ufb01", "").replace("\ufb02", "").replace("\ufeff", "")
-	# Data in table-striped : universal_ product_code (upc), price_including_tax, price_excluding_tax, number_available, 
+    booking["title"] = unicodedata.normalize('NFC', title_book).encode("ascii", "ignore").decode()
+    
+    # Data in table-striped : universal_ product_code (upc), price_including_tax, price_excluding_tax, number_available, 
     table = soup_book_page.find("table", {"class": "table table-striped"})
     for row in table.find_all("tr"):
         th = row.find("th").get_text()
@@ -99,7 +100,7 @@ def extract_book_data(book_url):
         descpt_list.append(descpt.text)
 	
     if descpt_list[3]:
-        booking["description"] = str(descpt_list[3]).replace("\u203D", "").replace("\u2028", "").replace("\ufb01", "").replace("\ufb02", "").replace("\ufeff", "") # remove special char for csv
+        booking["description"] = unicodedata.normalize('NFC', str(descpt_list[3])).encode("ascii", "ignore").decode()
     else:
         booking["description"] = "Sans description"
 	
@@ -117,9 +118,8 @@ def extract_book_data(book_url):
     url_img = url_site_root + url_img_bs.replace("../", "")
     booking["image_url"] = url_img
     # load and save img 
-    img_title = title_book.replace("'", "_").replace(" ", "_").replace(":", "").replace("#", "").replace(".", "").replace(",", "").replace("/", "_").replace('"', "")
-    urllib.request.urlretrieve(url_img, f"../scrapbook/image/{img_title}.jpg")
-    print(booking["title"])   
+    img_title = title_book.replace("'", "_").replace(" ", "_").replace(":", "").replace("#", "").replace(".", "").replace(",", "").replace("/", "_").replace('"', "").replace("&", "").replace("*", "").replace("?", "")
+    urllib.request.urlretrieve(url_img, f"../scrapbook/image/{img_title}.jpg")   
     return booking
 
 
@@ -127,11 +127,9 @@ def extract_book_data(book_url):
 def export_csv(books, category):
     #Export data in csv file
     with open(f"csv/{category}.csv", "w", newline="") as csvfile:  
-        # writer = csv.DictWriter(csvfile, fieldnames=list(vars(books[0].keys())))
         writer = csv.DictWriter(csvfile, fieldnames=['title', 'url', 'upc', 'price_including_tax', 'price_excluding_tax', 'description', 'category', 'stock', 'review_rating', 'image_url'])
-        writer.writeheader() # 'title', 'url', 'upc', 'price_including_tax', 'price_excluding_tax', 'description', 'category', 'stock', 'review_rating', 'image_url')
+        writer.writeheader() 
         for book in books:
-            # writer.writerow(vars(book))
             writer.writerow(book)
 
 #Main function
