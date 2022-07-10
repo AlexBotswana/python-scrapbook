@@ -6,11 +6,9 @@ Installation
     create a virutal environment:
         py -m venv .venv
         .\scripts\activate
-
-    If you don't have the packages requests,  beautifulsoup, urllib.request,  you have to install them:
-        pip install requests
-        pip install beautifulsoup4
-        pip install opencv-python
+        
+    In the virtual environment, paste the file requirements.txt and execute the following command:
+        pip install -r requirements.txt
 
 Execution
     In the folder where you paste the program main.py:
